@@ -1,0 +1,99 @@
+PRUEBAS REALIZADAS - API DE PRODUCTOS (FastAPI)
+=================================================
+Herramienta utilizada: Swagger UI (http://127.0.0.1:8000/docs)
+Fecha: [completa con la fecha en que hiciste las pruebas]
+Responsable: [tu nombre]
+
+-------------------------------------------------
+1. POST /productos - Registro de productos
+-------------------------------------------------
+Escenario: Registrar productos válidos
+Datos enviados (ejemplo):
+{
+  "id": 3,
+  "nombre": "Celular",
+  "categoria": "Iphone",
+  "precio": 7000,
+  "stock": 1
+}
+Resultado esperado: 201 Created
+Resultado obtenido: OK - Producto creado correctamente
+
+Escenario: Registrar producto con ID ya existente
+Resultado esperado: 409 Conflict - "Ya existe un producto registrado con el ID X"
+Resultado obtenido: OK - Error controlado correctamente
+
+-------------------------------------------------
+2. GET /productos - Consultar todos los productos
+-------------------------------------------------
+Escenario: Listar todos los productos registrados
+Resultado esperado: 200 OK - Arreglo con todos los productos
+Resultado obtenido: OK - Se listaron los productos previamente creados
+
+-------------------------------------------------
+3. GET /productos/{id_producto} - Consultar un producto
+-------------------------------------------------
+Escenario: Consultar un producto con ID existente
+Resultado esperado: 200 OK - Datos del producto
+Resultado obtenido: OK
+
+Escenario: Consultar un producto con ID inexistente
+Resultado esperado: 404 Not Found - "Producto no encontrado"
+Resultado obtenido: OK - Error controlado correctamente
+
+-------------------------------------------------
+4. PUT /productos/{id_producto} - Actualizar un producto
+-------------------------------------------------
+Escenario: Actualizar un producto existente
+Resultado esperado: 200 OK - Producto con los nuevos valores
+Resultado obtenido: OK - Actualización reflejada correctamente
+
+Escenario: Actualizar un producto con ID inexistente
+Resultado esperado: 404 Not Found - "Producto no encontrado"
+Resultado obtenido: OK - Error controlado correctamente
+
+-------------------------------------------------
+5. DELETE /productos/{id_producto} - Eliminar un producto
+-------------------------------------------------
+Escenario: Eliminar un producto existente (ID 3)
+Resultado esperado: 200 OK - Devuelve el producto eliminado
+Resultado obtenido: OK
+{
+  "id": 3,
+  "nombre": "Celular",
+  "categoria": "Iphone",
+  "precio": 7000,
+  "stock": 1
+}
+
+Escenario: Confirmar eliminación (GET posterior al mismo ID)
+Resultado esperado: 404 Not Found
+Resultado obtenido: OK - El producto ya no existe en la lista
+
+-------------------------------------------------
+6. Errores de validación (Pydantic - código 422)
+-------------------------------------------------
+Escenario: Registrar producto con precio = 0 o negativo
+Resultado esperado: 422 Unprocessable Entity
+Resultado obtenido: OK - Rechazado por validación (Field gt=0)
+
+Escenario: Registrar producto con stock negativo
+Resultado esperado: 422 Unprocessable Entity
+Resultado obtenido: OK - Rechazado por validación (Field ge=0)
+
+Escenario: Registrar producto sin nombre / nombre vacío
+Resultado esperado: 422 Unprocessable Entity
+Resultado obtenido: OK - Rechazado por validación (Field min_length=1)
+
+Escenario: Registrar producto sin categoria / categoria vacía
+Resultado esperado: 422 Unprocessable Entity
+Resultado obtenido: OK - Rechazado por validación (Field min_length=1)
+
+-------------------------------------------------
+CONCLUSION
+-------------------------------------------------
+Se probaron los 5 endpoints de la API (GET /productos, GET /productos/{id},
+POST /productos, PUT /productos/{id}, DELETE /productos/{id}) cubriendo
+escenarios de consulta exitosa, registro, actualizacion, eliminacion y
+errores de validacion, confirmando que la API responde con los codigos
+HTTP correctos (200, 201, 404, 409, 422) segun cada caso.

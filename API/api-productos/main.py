@@ -1,6 +1,9 @@
 import logging
-from fastapi import FastAPI, HTTPException, status
-from pydantic import BaseModel, Field
+from fastapi import FastAPI, HTTPException, status, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field, field_validator
 from typing import List
 
 logging.basicConfig(
@@ -19,6 +22,23 @@ app = FastAPI(
 productos: List[dict] = []
 
 
+@app.exception_handler(RequestValidationError)
+async def manejador_errores_validacion(request: Request, exc: RequestValidationError):
+    errores = []
+    for error in exc.errors():
+        campo = error.get("loc", [])[-1]
+        msg = error.get("msg", "dato inválido")
+        errores.append(f"{campo} ({msg})")
+    
+    mensaje_error = ", ".join(errores)
+    logger.error(f"{request.method} {request.url.path} - Error de validación: {mensaje_error}")
+    
+    return JSONResponse(
+        status_code=422,
+        content={"detail": jsonable_encoder(exc.errors())},
+    )
+
+
 class Producto(BaseModel):
     id: int
     nombre: str = Field(min_length=1, description="Nombre obligatorio del producto (no vacío)")
@@ -26,12 +46,26 @@ class Producto(BaseModel):
     precio: float = Field(gt=0, description="El precio debe ser estrictamente mayor que cero")
     stock: int = Field(ge=0, description="El stock no puede ser un número negativo")
 
+    @field_validator("nombre", "categoria")
+    @classmethod
+    def validar_no_espacios_en_blanco(cls, valor: str):
+        if not valor.strip():
+            raise ValueError("no puede estar vacío ni contener solo espacios")
+        return valor.strip()
+
 
 class ProductoActualizar(BaseModel):
     nombre: str = Field(min_length=1, description="Nombre obligatorio del producto (no vacío)")
     categoria: str = Field(min_length=1, description="Categoría obligatoria del producto (no vacía)")
     precio: float = Field(gt=0, description="El precio debe ser estrictamente mayor que cero")
     stock: int = Field(ge=0, description="El stock no puede ser un número negativo")
+
+    @field_validator("nombre", "categoria")
+    @classmethod
+    def validar_no_espacios_en_blanco(cls, valor: str):
+        if not valor.strip():
+            raise ValueError("no puede estar vacío ni contener solo espacios")
+        return valor.strip()
 
 
 def buscar_producto_por_id(id_producto: int):
@@ -48,10 +82,7 @@ def buscar_producto_por_id(id_producto: int):
     description="Devuelve la lista completa de productos almacenados en memoria.",
 )
 def obtener_productos():
-
     logger.info("GET /productos - Inicio de consulta de productos")
-    
-    # Registro de operación exitosa
     logger.info(f"GET /productos - Consulta exitosa ({len(productos)} productos encontrados)")
     return productos
 
@@ -63,15 +94,12 @@ def obtener_productos():
     description="Busca un producto específico usando su identificador numérico.",
 )
 def obtener_producto(id_producto: int):
-    
     logger.info(f"GET /productos/{id_producto} - Inicio de búsqueda de producto")
-    
     producto = buscar_producto_por_id(id_producto)
     if producto is None:
         logger.error(f"GET /productos/{id_producto} - Producto no encontrado")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto no encontrado")
     
-  
     logger.info(f"GET /productos/{id_producto} - Consulta exitosa")
     return producto
 
@@ -87,9 +115,7 @@ def obtener_producto(id_producto: int):
     ),
 )
 def crear_producto(producto: Producto):
-   
     logger.info(f"POST /productos - Inicio de creación de producto con ID {producto.id}")
-    
     if buscar_producto_por_id(producto.id) is not None:
         logger.error(f"POST /productos - Error: Ya existe un producto con el ID {producto.id}")
         raise HTTPException(
@@ -99,7 +125,6 @@ def crear_producto(producto: Producto):
 
     nuevo_producto = producto.model_dump()
     productos.append(nuevo_producto)
-    
     logger.info(f"POST /productos - Producto registrado exitosamente (ID: {nuevo_producto['id']})")
     return nuevo_producto
 
@@ -111,9 +136,7 @@ def crear_producto(producto: Producto):
     description="Actualiza todos los campos de un producto existente identificado por su ID.",
 )
 def actualizar_producto(id_producto: int, datos: ProductoActualizar):
-
     logger.info(f"PUT /productos/{id_producto} - Inicio de actualización de producto")
-    
     producto = buscar_producto_por_id(id_producto)
     if producto is None:
         logger.error(f"PUT /productos/{id_producto} - Error al actualizar: Producto no encontrado")
@@ -123,7 +146,6 @@ def actualizar_producto(id_producto: int, datos: ProductoActualizar):
     producto["categoria"] = datos.categoria
     producto["precio"] = datos.precio
     producto["stock"] = datos.stock
-    
     logger.info(f"PUT /productos/{id_producto} - Producto actualizado exitosamente")
     return producto
 
@@ -136,13 +158,11 @@ def actualizar_producto(id_producto: int, datos: ProductoActualizar):
 )
 def eliminar_producto(id_producto: int):
     logger.info(f"DELETE /productos/{id_producto} - Inicio de eliminación de producto")
-    
     producto = buscar_producto_por_id(id_producto)
     if producto is None:
         logger.error(f"DELETE /productos/{id_producto} - Error al eliminar: Producto no encontrado")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto no encontrado")
 
     productos.remove(producto)
-    
     logger.info(f"DELETE /productos/{id_producto} - Producto eliminado exitosamente")
     return producto

@@ -27,7 +27,7 @@ app = FastAPI(
 )
 
 productos = []  # Almacenamiento temporal en memoria.
-GEMINI_MODEL = "gemini-3.8-flash"
+GEMINI_MODEL = "gemini-3.6-flash"
 GEMINI_TIMEOUT = 20
 
 
